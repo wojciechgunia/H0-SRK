@@ -1,51 +1,77 @@
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit
-from PySide6.QtGui import QCloseEvent, QPixmap
+from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout
+from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent
 import serial
+import serial.tools.list_ports
 
-ser=serial.Serial(
-port='COM3',
-baudrate=9600,
-parity=serial.PARITY_NONE,
-stopbits=serial.STOPBITS_ONE,
-bytesize=serial.EIGHTBITS,
-timeout=1
-)
-
-if ser.isOpen():
-     print(ser.name + ' is open...')
-
-class LoginWindow(QWidget):
+com=""
+fpath=""
+coms=[comport.device for comport in serial.tools.list_ports.comports()]
+f=""
+ser=""
+# =========================================App==================================================================================================================
+class AppWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.login_line_edit = None;
+        self.setup()
 
+    def setup(self):
+        width = 1200
+        height = 800
+
+        self.setFixedSize(width, height)
+        self.setWindowTitle("Start Window")
+
+
+    def closeEvent(self, event: QCloseEvent):
+        should_clouse = QMessageBox.question(self,"Close App","Do you want to close?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if should_clouse == QMessageBox.StandardButton.Yes:
+            event.accept()
+        else:
+            event.ignore()
+
+#=============================Start=====================================================================================================================================
+class StartWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.path_edit = None
+        self.com_id = None
         self.setup()
 
     def setup(self):
         width = 400
 
-        pix_label = QLabel(self)
-        pixmap = QPixmap("C:\\Users\\wojte\\Pictures\\My Icons\\Picture_alt.png")
-        pix_label.setPixmap(pixmap)
-        pix_label.move((width-128)/2, 50)
+        self.path_edit = QLineEdit("D:\\", self)
+        self.path_edit.setFixedWidth(200)
+        self.path_edit.move(165, 61)
 
-        self.login_line_edit = QLineEdit("comand", self)
-        self.login_line_edit.setFixedWidth(200)
-        self.login_line_edit.move(100, 350)
+        self.com_id = QComboBox(self)
+        self.com_id.addItems(coms)
+        self.com_id.move(12, 21)
+        
+        openf_btn = QPushButton("Open file", self)
+        openf_btn.move(10, 60)
 
-        submit_btn = QPushButton("Submit", self)
-        submit_btn.move((width - submit_btn.size().width())/2, 410)
+        newf_btn = QPushButton("New file", self)
+        newf_btn.move(85, 60)
+
+        openapp_btn = QPushButton("Open App", self)
+        openapp_btn.move(10, 100)
+        openapp_btn.setFixedSize(160,40)
 
         quit_btn = QPushButton("Quit", self)
-        quit_btn.move(320, 570)
+        quit_btn.move(320, 170)
 
 
-        submit_btn.clicked.connect(self.submit)
+        openf_btn.clicked.connect(self.openfile)
+        newf_btn.clicked.connect(self.newfile)
         quit_btn.clicked.connect(QApplication.instance().quit)
+        openapp_btn.clicked.connect(self.openapp)
 
-        self.setFixedSize(width, 600)
-        self.setWindowTitle("Login Window")
+        self.setFixedSize(width, 200)
+        self.setWindowTitle("Start Window")
 
         self.show()
 
@@ -58,12 +84,34 @@ class LoginWindow(QWidget):
             event.ignore()
 
     def submit(self):
-        print(self.login_line_edit.text())
-        ser.write(str.encode(str(self.login_line_edit.text())))
+        print(self.path_edit.text())
+        # ser.write(str.encode(str(self.path_edit.text())))
+
+    def openfile(self):
+        fname=QFileDialog.getOpenFileName(self, 'Open file', 'D:\\', 'RJ files (*.rj)')
+        if(fname[0]!=""):
+            self.path_edit.setText(fname[0])
+
+    def newfile(self):
+        fname=QFileDialog.getSaveFileName(self, 'Create file', 'D:\\', 'RJ files (*.rj)')
+        if(fname[0]!=""):
+            self.path_edit.setText(fname[0])
+            f = open(fname[0],'x')
+
+    def openapp(self):
+        fpath = self.path_edit.text()
+        com = self.com_id.currentText()
+        if(fpath.endswith(".rj")):
+            ser=serial.Serial(port=com,baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS,timeout=1)
+            if ser.isOpen():
+                print(ser.name + ' is open...')
+            self.hide()
+            app_window.show()
+
 
 if __name__ == "__main__":
     app = QApplication([])
 
-    login_window = LoginWindow()
-
+    start_window = StartWindow()
+    app_window = AppWindow()
     app.exec()
