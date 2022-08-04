@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent
+from PySide6.QtCore import Qt
 import serial
 import serial.tools.list_ports
 
@@ -7,29 +8,7 @@ com=""
 fpath=""
 coms=[comport.device for comport in serial.tools.list_ports.comports()]
 f=""
-ser=""
-# =========================================App==================================================================================================================
-class AppWindow(QWidget):
-    def __init__(self):
-        super().__init__()
 
-        self.setup()
-
-    def setup(self):
-        width = 1200
-        height = 800
-
-        self.setFixedSize(width, height)
-        self.setWindowTitle("Start Window")
-
-
-    def closeEvent(self, event: QCloseEvent):
-        should_clouse = QMessageBox.question(self,"Close App","Do you want to close?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-
-        if should_clouse == QMessageBox.StandardButton.Yes:
-            event.accept()
-        else:
-            event.ignore()
 
 #=============================Start=====================================================================================================================================
 class StartWindow(QWidget):
@@ -38,12 +17,13 @@ class StartWindow(QWidget):
 
         self.path_edit = None
         self.com_id = None
+        self.ser = None
         self.setup()
 
     def setup(self):
         width = 400
 
-        self.path_edit = QLineEdit("D:\\", self)
+        self.path_edit = QLineEdit("D:\\New.rj", self)
         self.path_edit.setFixedWidth(200)
         self.path_edit.move(165, 61)
 
@@ -53,6 +33,7 @@ class StartWindow(QWidget):
         
         openf_btn = QPushButton("Open file", self)
         openf_btn.move(10, 60)
+
 
         newf_btn = QPushButton("New file", self)
         newf_btn.move(85, 60)
@@ -83,10 +64,6 @@ class StartWindow(QWidget):
         else:
             event.ignore()
 
-    def submit(self):
-        print(self.path_edit.text())
-        # ser.write(str.encode(str(self.path_edit.text())))
-
     def openfile(self):
         fname=QFileDialog.getOpenFileName(self, 'Open file', 'D:\\', 'RJ files (*.rj)')
         if(fname[0]!=""):
@@ -102,12 +79,146 @@ class StartWindow(QWidget):
         fpath = self.path_edit.text()
         com = self.com_id.currentText()
         if(fpath.endswith(".rj")):
-            ser=serial.Serial(port=com,baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS,timeout=1)
-            if ser.isOpen():
-                print(ser.name + ' is open...')
+            self.ser=serial.Serial(port=com,baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS,timeout=1)
+            if self.ser.isOpen():
+                print(self.ser.name + ' is open...')
             self.hide()
+            app_window.loaddata()
             app_window.show()
+            
 
+    def getser(self):
+        return self.ser
+
+    def getfpath(self):
+        return self.path_edit.text()
+# =========================================App==================================================================================================================
+class AppWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.datatab = []
+        self.command_line = None
+        self.setup()
+
+    def setup(self):
+        width = 1200
+        height = 800
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        layout2 = QHBoxLayout()
+        layout.addLayout(layout2)
+
+        self.command_line = QLineEdit("P1;10:00;Wągrowiec;R12345;KW;F1", self)
+        self.command_line.setFixedWidth(400)
+        layout2.addWidget(self.command_line)
+
+        exec_btn = QPushButton("Execute", self)
+        layout2.addWidget(exec_btn)
+
+        self.table = QTableWidget()
+        layout.addWidget(self.table)
+
+        exec_btn.clicked.connect(self.execcom)
+
+        self.setFixedSize(width, height)
+        self.setWindowTitle("App Window")
+
+    def execcom(self):
+        ser = start_window.getser()
+        extext = self.command_line.text()
+        extext = extext.replace('Ą','!')
+        extext = extext.replace('ą','"')
+        extext = extext.replace('Ę','#')
+        extext = extext.replace('ę','$')
+        extext = extext.replace('Ś','%')
+        extext = extext.replace('ś','&')
+        extext = extext.replace('Ć','{')
+        extext = extext.replace('ć','}')
+        extext = extext.replace('Ó','(')
+        extext = extext.replace('ó',')')
+        extext = extext.replace('Ż','*')
+        extext = extext.replace('ż','+')
+        extext = extext.replace('Ź',',')
+        extext = extext.replace('ź','/')
+        extext = extext.replace('Ń','<')
+        extext = extext.replace('ń','>')
+        extext = extext.replace('Ł','?')
+        extext = extext.replace('ł','@')
+        print(extext)
+        ser.write(str.encode(str(extext)))
+
+    def closeEvent(self, event: QCloseEvent):
+        should_clouse = QMessageBox.question(self,"Close App","Do you want to close?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if should_clouse == QMessageBox.StandardButton.Yes:
+            event.accept()
+        else:
+            event.ignore()
+
+    def loaddata(self):
+        dataf = open(start_window.getfpath(), 'r', encoding="utf-8")
+        self.datatab = dataf.readlines()
+        for line in range(len(self.datatab)):
+            self.datatab[line] = self.datatab[line].replace('\n','')
+            self.datatab[line] = self.datatab[line].split(';')
+        print(self.datatab)
+        dataf.close()
+        self.table.setRowCount(len(self.datatab))
+        self.table.setColumnCount(9)
+        self.table.setHorizontalHeaderLabels(['Czas przyjazdu','Czas odjazdu','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opcje'])
+
+        for row in range(len(self.datatab)):
+            buttons = QWidget()
+            execb = QPushButton("Play",self)
+            delb = QPushButton("Delete",self)
+            execb.clicked.connect(lambda: self.exebtn(row))
+            delb.clicked.connect(lambda: self.delbtn(row))
+            butlay = QHBoxLayout()
+            butlay.setAlignment(Qt.AlignCenter)
+            butlay.setContentsMargins(0,0,0,0)
+            butlay.addWidget(execb)
+            butlay.addWidget(delb)
+            buttons.setLayout(butlay)
+            self.table.setItem(row, 0, QTableWidgetItem(str(self.datatab[row][3]+":"+self.datatab[row][4])))
+            self.table.setItem(row, 1, QTableWidgetItem(str(self.datatab[row][5]+":"+self.datatab[row][6])))
+            self.table.setItem(row, 2, QTableWidgetItem(str(self.datatab[row][7])))
+            self.table.setItem(row, 3, QTableWidgetItem(str(self.datatab[row][8])))
+            self.table.setItem(row, 4, QTableWidgetItem(str(self.datatab[row][1])))
+            self.table.setItem(row, 5, QTableWidgetItem(str(self.datatab[row][2])))
+            self.table.setItem(row, 6, QTableWidgetItem(str(self.datatab[row][9])))
+            self.table.setItem(row, 7, QTableWidgetItem(str(self.datatab[row][10])))
+            self.table.setCellWidget(row, 8, buttons)
+
+    def exebtn(self, row):
+        ser = start_window.getser()
+        extext = self.datatab[row][0]+";"+self.datatab[row][5]+":"+self.datatab[row][6]+";"+self.datatab[row][8]+";"+self.datatab[row][9]+";"+self.datatab[row][10]+";"+self.datatab[row][11]+";"+self.datatab[row][12]
+        extext = extext.replace('Ą','!')
+        extext = extext.replace('ą','"')
+        extext = extext.replace('Ę','#')
+        extext = extext.replace('ę','$')
+        extext = extext.replace('Ś','%')
+        extext = extext.replace('ś','&')
+        extext = extext.replace('Ć','{')
+        extext = extext.replace('ć','}')
+        extext = extext.replace('Ó','(')
+        extext = extext.replace('ó',')')
+        extext = extext.replace('Ż','*')
+        extext = extext.replace('ż','+')
+        extext = extext.replace('Ź',',')
+        extext = extext.replace('ź','/')
+        extext = extext.replace('Ń','<')
+        extext = extext.replace('ń','>')
+        extext = extext.replace('Ł','?')
+        extext = extext.replace('ł','@')
+        print(extext)
+        ser.write(str.encode(str(extext)))
+
+    def delbtn(self, row):
+        print("del"+str(row))
+#==============================main==========================================================================================================================
 
 if __name__ == "__main__":
     app = QApplication([])
