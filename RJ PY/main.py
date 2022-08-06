@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import QApplication, QScrollArea, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent
-from PySide6.QtCore import Qt, SIGNAL, QObject
+from PySide6.QtCore import Qt, SIGNAL, QObject, QSize
 from functools import partial
 import serial
 import serial.tools.list_ports
@@ -51,6 +51,7 @@ class StartWindow(QWidget):
         newf_btn.clicked.connect(self.newfile)
         quit_btn.clicked.connect(QApplication.instance().quit)
         openapp_btn.clicked.connect(self.openapp)
+
 
         self.setFixedSize(width, 200)
         self.setWindowTitle("Start Window")
@@ -110,6 +111,7 @@ class AppWindow(QWidget):
         self.setLayout(layout)
 
         layout2 = QHBoxLayout()
+        layout2.setAlignment(Qt.AlignLeft)
         layout.addLayout(layout2)
 
         self.command_line = QLineEdit("", self)
@@ -178,23 +180,27 @@ class AppWindow(QWidget):
         print(self.datatab)
         dataf.close()
         self.table.setRowCount(len(self.datatab))
-        self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(['Czas przyjazdu','Czas odjazdu','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opcje'])
+        self.table.setColumnCount(10)
+        self.table.setHorizontalHeaderLabels(['Czas przyjazdu','Czas odjazdu','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opóźnienie', 'Opcje'])
         buttons=[]
         execb=[]
         delb=[]
         butlay=[]
+        saveb=[]
         for row in range(len(self.datatab)):
             buttons.append(QWidget())
             execb.append(QPushButton("Play",self))
             delb.append(QPushButton("Delete",self))
+            saveb.append(QPushButton("Save",self))
             execb[row].clicked.connect(partial(self.exebtn,row))
             delb[row].clicked.connect(partial(self.delbtn,row))
+            saveb[row].clicked.connect(partial(self.savebtn,row))
             butlay.append(QHBoxLayout())
             butlay[row].setAlignment(Qt.AlignCenter)
             butlay[row].setContentsMargins(0,0,0,0)
             butlay[row].addWidget(execb[row])
             butlay[row].addWidget(delb[row])
+            butlay[row].addWidget(saveb[row])
             buttons[row].setLayout(butlay[row])
             self.table.setItem(row, 0, QTableWidgetItem(str(self.datatab[row][3]+":"+self.datatab[row][4])))
             self.table.setItem(row, 1, QTableWidgetItem(str(self.datatab[row][5]+":"+self.datatab[row][6])))
@@ -204,11 +210,16 @@ class AppWindow(QWidget):
             self.table.setItem(row, 5, QTableWidgetItem(str(self.datatab[row][2])))
             self.table.setItem(row, 6, QTableWidgetItem(str(self.datatab[row][9])))
             self.table.setItem(row, 7, QTableWidgetItem(str(self.datatab[row][10])))
-            self.table.setCellWidget(row, 8, buttons[row])
+            self.table.setItem(row, 8, QTableWidgetItem(str(self.datatab[row][12])))
+            self.table.setCellWidget(row, 9, buttons[row])
 
     def exebtn(self, row):
         ser = start_window.getser()
-        extext = self.datatab[row][0]+";"+self.datatab[row][5]+":"+self.datatab[row][6]+";"+self.datatab[row][8]+";"+self.datatab[row][9]+";"+self.datatab[row][10]+";"+self.datatab[row][11]+";"+self.datatab[row][12]
+        if self.datatab[row][11]=="F1":
+            stacja = self.datatab[row][7]
+        else:
+            stacja = self.datatab[row][8]
+        extext = self.datatab[row][0]+";"+self.datatab[row][5]+":"+self.datatab[row][6]+";"+stacja+";"+self.datatab[row][9]+";"+self.datatab[row][10]+";"+self.datatab[row][11]+";"+self.datatab[row][12]
         extext = extext.replace('Ą','!')
         extext = extext.replace('ą','"')
         extext = extext.replace('Ę','#')
@@ -232,6 +243,9 @@ class AppWindow(QWidget):
 
     def delbtn(self, row):
         print("del"+str(row))
+
+    def savebtn(self, row):
+        print("save"+str(row))
 #==============================main==========================================================================================================================
 
 if __name__ == "__main__":
