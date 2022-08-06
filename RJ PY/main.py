@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, SIGNAL, QObject
+from functools import partial
 import serial
 import serial.tools.list_ports
 
@@ -111,17 +112,23 @@ class AppWindow(QWidget):
         layout2 = QHBoxLayout()
         layout.addLayout(layout2)
 
-        self.command_line = QLineEdit("P1;10:00;Wągrowiec;R12345;KW;F1", self)
+        self.command_line = QLineEdit("", self)
         self.command_line.setFixedWidth(400)
         layout2.addWidget(self.command_line)
 
         exec_btn = QPushButton("Execute", self)
+        exec_btn.setFixedWidth(120)
         layout2.addWidget(exec_btn)
+
+        clear_btn = QPushButton("Clear", self)
+        clear_btn.setFixedWidth(120)
+        layout2.addWidget(clear_btn)
 
         self.table = QTableWidget()
         layout.addWidget(self.table)
 
         exec_btn.clicked.connect(self.execcom)
+        clear_btn.clicked.connect(self.clear)
 
         self.setFixedSize(width, height)
         self.setWindowTitle("App Window")
@@ -150,6 +157,10 @@ class AppWindow(QWidget):
         print(extext)
         ser.write(str.encode(str(extext)))
 
+    def clear(self):
+        ser = start_window.getser()
+        ser.write(str.encode(";;;;;"))
+
     def closeEvent(self, event: QCloseEvent):
         should_clouse = QMessageBox.question(self,"Close App","Do you want to close?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
@@ -169,19 +180,22 @@ class AppWindow(QWidget):
         self.table.setRowCount(len(self.datatab))
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels(['Czas przyjazdu','Czas odjazdu','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opcje'])
-
+        buttons=[]
+        execb=[]
+        delb=[]
+        butlay=[]
         for row in range(len(self.datatab)):
-            buttons = QWidget()
-            execb = QPushButton("Play",self)
-            delb = QPushButton("Delete",self)
-            execb.clicked.connect(lambda: self.exebtn(row))
-            delb.clicked.connect(lambda: self.delbtn(row))
-            butlay = QHBoxLayout()
-            butlay.setAlignment(Qt.AlignCenter)
-            butlay.setContentsMargins(0,0,0,0)
-            butlay.addWidget(execb)
-            butlay.addWidget(delb)
-            buttons.setLayout(butlay)
+            buttons.append(QWidget())
+            execb.append(QPushButton("Play",self))
+            delb.append(QPushButton("Delete",self))
+            execb[row].clicked.connect(partial(self.exebtn,row))
+            delb[row].clicked.connect(partial(self.delbtn,row))
+            butlay.append(QHBoxLayout())
+            butlay[row].setAlignment(Qt.AlignCenter)
+            butlay[row].setContentsMargins(0,0,0,0)
+            butlay[row].addWidget(execb[row])
+            butlay[row].addWidget(delb[row])
+            buttons[row].setLayout(butlay[row])
             self.table.setItem(row, 0, QTableWidgetItem(str(self.datatab[row][3]+":"+self.datatab[row][4])))
             self.table.setItem(row, 1, QTableWidgetItem(str(self.datatab[row][5]+":"+self.datatab[row][6])))
             self.table.setItem(row, 2, QTableWidgetItem(str(self.datatab[row][7])))
@@ -190,7 +204,7 @@ class AppWindow(QWidget):
             self.table.setItem(row, 5, QTableWidgetItem(str(self.datatab[row][2])))
             self.table.setItem(row, 6, QTableWidgetItem(str(self.datatab[row][9])))
             self.table.setItem(row, 7, QTableWidgetItem(str(self.datatab[row][10])))
-            self.table.setCellWidget(row, 8, buttons)
+            self.table.setCellWidget(row, 8, buttons[row])
 
     def exebtn(self, row):
         ser = start_window.getser()
