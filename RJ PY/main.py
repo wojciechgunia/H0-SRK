@@ -102,9 +102,10 @@ class AppWindow(QWidget):
         self.datatab = []
         self.command_line = None
         self.setup()
+        self.stationName = "Poznań Główny"
 
     def setup(self):
-        width = 1200
+        width = 900
         height = 800
 
         layout = QVBoxLayout()
@@ -119,25 +120,28 @@ class AppWindow(QWidget):
         layout2.addWidget(self.command_line)
 
         exec_btn = QPushButton("Execute", self)
-        exec_btn.setFixedWidth(120)
+        exec_btn.setFixedWidth(80)
         layout2.addWidget(exec_btn)
 
         clear_btn = QPushButton("Clear", self)
-        clear_btn.setFixedWidth(120)
+        clear_btn.setFixedWidth(80)
         layout2.addWidget(clear_btn)
+
+        save_btn = QPushButton("Save to file", self)
+        save_btn.setFixedWidth(120)
+        layout2.addWidget(save_btn)
 
         self.table = QTableWidget()
         layout.addWidget(self.table)
 
         exec_btn.clicked.connect(self.execcom)
         clear_btn.clicked.connect(self.clear)
+        save_btn.clicked.connect(self.savetof)
 
         self.setFixedSize(width, height)
         self.setWindowTitle("App Window")
 
-    def execcom(self):
-        ser = start_window.getser()
-        extext = self.command_line.text()
+    def polishchar(self,extext):
         extext = extext.replace('Ą','!')
         extext = extext.replace('ą','"')
         extext = extext.replace('Ę','#')
@@ -156,6 +160,27 @@ class AppWindow(QWidget):
         extext = extext.replace('ń','>')
         extext = extext.replace('Ł','?')
         extext = extext.replace('ł','@')
+        return extext
+
+    def getplatform(self, peron, tor):
+        if(peron=="1", tor=="1"):
+            return "P1"
+        else:
+            return ""
+
+    def getF(self, delay, endstation):
+        print(delay)
+        if int(delay)>0:
+            return "F2"
+        elif endstation==self.stationName:
+            return "F1"
+        else:
+            return "F0"
+
+    def execcom(self):
+        ser = start_window.getser()
+        extext = self.command_line.text()
+        extext = self.polishchar(extext)
         print(extext)
         ser.write(str.encode(str(extext)))
 
@@ -171,6 +196,14 @@ class AppWindow(QWidget):
         else:
             event.ignore()
 
+    def savetof(self):
+        dataf = open(start_window.getfpath(), 'w', encoding="utf-8")
+        for line in self.datatab:
+            line = ';'.join(line)
+            line = line + "\n"
+            dataf.write(line)
+
+
     def loaddata(self):
         dataf = open(start_window.getfpath(), 'r', encoding="utf-8")
         self.datatab = dataf.readlines()
@@ -179,14 +212,28 @@ class AppWindow(QWidget):
             self.datatab[line] = self.datatab[line].split(';')
         print(self.datatab)
         dataf.close()
-        self.table.setRowCount(len(self.datatab))
+        self.printtable()
+
+    def printtable(self):
+        self.table.setRowCount(len(self.datatab)+1)
         self.table.setColumnCount(10)
-        self.table.setHorizontalHeaderLabels(['Czas przyjazdu','Czas odjazdu','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opóźnienie', 'Opcje'])
+        self.table.setHorizontalHeaderLabels(['Przyjazd','Odjazd','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opóźnienie', 'Opcje'])
+        self.table.setColumnWidth(0,55)
+        self.table.setColumnWidth(1,55)
+        self.table.setColumnWidth(2,135)
+        self.table.setColumnWidth(3,135)
+        self.table.setColumnWidth(4,20)
+        self.table.setColumnWidth(5,20)
+        self.table.setColumnWidth(6,70)
+        self.table.setColumnWidth(7,75)
+        self.table.setColumnWidth(8,75)
+        self.table.setColumnWidth(9,160)
         buttons=[]
         execb=[]
         delb=[]
         butlay=[]
         saveb=[]
+        row=-1
         for row in range(len(self.datatab)):
             buttons.append(QWidget())
             execb.append(QPushButton("Play",self))
@@ -212,40 +259,66 @@ class AppWindow(QWidget):
             self.table.setItem(row, 7, QTableWidgetItem(str(self.datatab[row][10])))
             self.table.setItem(row, 8, QTableWidgetItem(str(self.datatab[row][12])))
             self.table.setCellWidget(row, 9, buttons[row])
+        addwid = QWidget()
+        addb = QPushButton("Add",self)
+        addb.clicked.connect(self.addline)
+        addlay = QHBoxLayout()
+        addlay.setAlignment(Qt.AlignCenter)
+        addlay.setContentsMargins(0,0,0,0)
+        addlay.addWidget(addb)
+        addwid.setLayout(addlay)
+        self.table.setItem(row+1, 0, QTableWidgetItem(""))
+        self.table.setItem(row+1, 1, QTableWidgetItem(""))
+        self.table.setItem(row+1, 2, QTableWidgetItem(""))
+        self.table.setItem(row+1, 3, QTableWidgetItem(""))
+        self.table.setItem(row+1, 4, QTableWidgetItem(""))
+        self.table.setItem(row+1, 5, QTableWidgetItem(""))
+        self.table.setItem(row+1, 6, QTableWidgetItem(""))
+        self.table.setItem(row+1, 7, QTableWidgetItem(""))
+        self.table.setItem(row+1, 8, QTableWidgetItem(""))
+        self.table.setCellWidget(row+1, 9, addwid)
 
     def exebtn(self, row):
         ser = start_window.getser()
         if self.datatab[row][11]=="F1":
             stacja = self.datatab[row][7]
+            godzina = self.datatab[row][3]+":"+self.datatab[row][4]
         else:
             stacja = self.datatab[row][8]
-        extext = self.datatab[row][0]+";"+self.datatab[row][5]+":"+self.datatab[row][6]+";"+stacja+";"+self.datatab[row][9]+";"+self.datatab[row][10]+";"+self.datatab[row][11]+";"+self.datatab[row][12]
-        extext = extext.replace('Ą','!')
-        extext = extext.replace('ą','"')
-        extext = extext.replace('Ę','#')
-        extext = extext.replace('ę','$')
-        extext = extext.replace('Ś','%')
-        extext = extext.replace('ś','&')
-        extext = extext.replace('Ć','{')
-        extext = extext.replace('ć','}')
-        extext = extext.replace('Ó','(')
-        extext = extext.replace('ó',')')
-        extext = extext.replace('Ż','*')
-        extext = extext.replace('ż','+')
-        extext = extext.replace('Ź',',')
-        extext = extext.replace('ź','/')
-        extext = extext.replace('Ń','<')
-        extext = extext.replace('ń','>')
-        extext = extext.replace('Ł','?')
-        extext = extext.replace('ł','@')
+            godzina = self.datatab[row][5]+":"+self.datatab[row][6]
+        extext = self.datatab[row][0]+";"+godzina+";"+stacja+";"+self.datatab[row][9]+";"+self.datatab[row][10]+";"+self.datatab[row][11]+";"+self.datatab[row][12]
+        extext = self.polishchar(extext)
         print(extext)
         ser.write(str.encode(str(extext)))
 
     def delbtn(self, row):
-        print("del"+str(row))
+        del self.datatab[row]
+        print(self.datatab)
+        self.printtable()
+
 
     def savebtn(self, row):
-        print("save"+str(row))
+        self.datatab[row][1]=self.table.item(row, 4).text()
+        self.datatab[row][2]=self.table.item(row, 5).text()
+        self.datatab[row][3]=self.table.item(row, 0).text()[0:2]
+        self.datatab[row][4]=self.table.item(row, 0).text()[3:5]
+        self.datatab[row][5]=self.table.item(row, 1).text()[0:2]
+        self.datatab[row][6]=self.table.item(row, 1).text()[3:5]
+        self.datatab[row][7]=self.table.item(row, 2).text()
+        self.datatab[row][8]=self.table.item(row, 3).text()
+        self.datatab[row][9]=self.table.item(row, 6).text()
+        self.datatab[row][10]=self.table.item(row, 7).text()
+        self.datatab[row][12]=self.table.item(row, 8).text()
+        self.datatab[row][0]=self.getplatform(self.table.item(row, 4).text(),self.table.item(row, 5).text())
+        self.datatab[row][11]=self.getF(self.table.item(row, 8).text(),self.table.item(row, 3).text())
+        print(self.datatab)
+
+    def addline(self):
+        row = len(self.datatab)
+        self.datatab.append([self.getplatform(self.table.item(row, 4).text(),self.table.item(row, 5).text()),self.table.item(row, 4).text(),self.table.item(row, 5).text(),self.table.item(row, 0).text()[0:2],self.table.item(row, 0).text()[3:5],self.table.item(row, 1).text()[0:2],self.table.item(row, 1).text()[3:5],self.table.item(row, 2).text(),self.table.item(row, 3).text(),self.table.item(row, 6).text(),self.table.item(row, 7).text(),self.getF(self.table.item(row, 8).text(),self.table.item(row, 3).text()),self.table.item(row, 8).text()])
+        print(self.datatab)
+        self.printtable()
+
 #==============================main==========================================================================================================================
 
 if __name__ == "__main__":
