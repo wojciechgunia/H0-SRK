@@ -1,3 +1,4 @@
+from platform import platform
 from PySide6.QtWidgets import QApplication, QScrollArea, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent
 from PySide6.QtCore import Qt, SIGNAL, QObject, QSize
@@ -98,15 +99,21 @@ class StartWindow(QWidget):
 class AppWindow(QWidget):
     def __init__(self):
         super().__init__()
-
+        conff = open(".\\rj.conf",'r', encoding="utf-8")
+        self.stationName = conff.readline().replace('\n','')
+        self.platforms = conff.readlines()
+        for i in range(len(self.platforms)):
+            self.platforms[i]=self.platforms[i].replace('\n','')
+            self.platforms[i]=self.platforms[i].split(";")
+        #print(self.platforms)
         self.datatab = []
         self.command_line = None
         self.setup()
-        self.stationName = "Poznań Główny"
+        
 
     def setup(self):
-        width = 900
-        height = 800
+        width = 895
+        height = 180
 
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -120,16 +127,30 @@ class AppWindow(QWidget):
         layout2.addWidget(self.command_line)
 
         exec_btn = QPushButton("Execute", self)
-        exec_btn.setFixedWidth(80)
+        exec_btn.setFixedWidth(70)
         layout2.addWidget(exec_btn)
 
+        save_btn = QPushButton("Save to file", self)
+        save_btn.setFixedWidth(90)
+        layout2.addWidget(save_btn)
+
+        ref_btn = QPushButton("Refresh", self)
+        ref_btn.setFixedWidth(70)
+        layout2.addWidget(ref_btn)
+
+        gapwidg = QWidget(self)
+        gapwidg.setFixedSize(20,10)
+        layout2.addWidget(gapwidg)
+
         clear_btn = QPushButton("Clear", self)
-        clear_btn.setFixedWidth(80)
+        clear_btn.setFixedWidth(70)
         layout2.addWidget(clear_btn)
 
-        save_btn = QPushButton("Save to file", self)
-        save_btn.setFixedWidth(120)
-        layout2.addWidget(save_btn)
+        self.comboplat = QComboBox(self)
+        for i in self.platforms:
+            self.comboplat.addItem('P: '+str(i[0])+' T: '+str(i[1]))
+        self.comboplat.setFixedWidth(90)
+        layout2.addWidget(self.comboplat)
 
         self.table = QTableWidget()
         layout.addWidget(self.table)
@@ -137,9 +158,10 @@ class AppWindow(QWidget):
         exec_btn.clicked.connect(self.execcom)
         clear_btn.clicked.connect(self.clear)
         save_btn.clicked.connect(self.savetof)
+        ref_btn.clicked.connect(self.refresh)
 
-        self.setFixedSize(width, height)
-        self.setWindowTitle("App Window")
+        self.setMinimumSize(width, height)
+        self.setWindowTitle("Rozkład Jazdy H0")
 
     def polishchar(self,extext):
         extext = extext.replace('Ą','!')
@@ -163,13 +185,14 @@ class AppWindow(QWidget):
         return extext
 
     def getplatform(self, peron, tor):
-        if(peron=="1", tor=="1"):
-            return "P1"
-        else:
-            return ""
+        a=""
+        for i in self.platforms:
+            if(peron==i[0] and tor==i[1]):
+                a=i[2]
+        return a
 
     def getF(self, delay, endstation):
-        print(delay)
+        #print(delay)
         if int(delay)>0:
             return "F2"
         elif endstation==self.stationName:
@@ -181,12 +204,16 @@ class AppWindow(QWidget):
         ser = start_window.getser()
         extext = self.command_line.text()
         extext = self.polishchar(extext)
-        print(extext)
+        #print(extext)
         ser.write(str.encode(str(extext)))
 
     def clear(self):
+        datplat=str(self.comboplat.currentText())
+        datplat=datplat.split(" ")
+        Per=self.getplatform(datplat[1], datplat[3])
         ser = start_window.getser()
-        ser.write(str.encode(";;;;;"))
+        ser.write(str.encode(Per+";;;;;"))
+        #print(Per+";;;;;")
 
     def closeEvent(self, event: QCloseEvent):
         should_clouse = QMessageBox.question(self,"Close App","Do you want to close?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -210,11 +237,18 @@ class AppWindow(QWidget):
         for line in range(len(self.datatab)):
             self.datatab[line] = self.datatab[line].replace('\n','')
             self.datatab[line] = self.datatab[line].split(';')
-        print(self.datatab)
+        #print(self.datatab)
         dataf.close()
         self.printtable()
 
+    def sort(self, row):
+        if row[11]=="F1":
+            return (row[3], row[4])
+        else:
+            return (row[5], row[6])
+
     def printtable(self):
+        self.datatab.sort(key=lambda row: self.sort(row))
         self.table.setRowCount(len(self.datatab)+1)
         self.table.setColumnCount(10)
         self.table.setHorizontalHeaderLabels(['Przyjazd','Odjazd','Ze stacji','Do stacji','Peron','Tor','Nr pociągu','Przewoźnik', 'Opóźnienie', 'Opcje'])
@@ -288,22 +322,22 @@ class AppWindow(QWidget):
             godzina = self.datatab[row][5]+":"+self.datatab[row][6]
         extext = self.datatab[row][0]+";"+godzina+";"+stacja+";"+self.datatab[row][9]+";"+self.datatab[row][10]+";"+self.datatab[row][11]+";"+self.datatab[row][12]
         extext = self.polishchar(extext)
-        print(extext)
+        #print(extext)
         ser.write(str.encode(str(extext)))
 
     def delbtn(self, row):
         del self.datatab[row]
-        print(self.datatab)
+        #print(self.datatab)
         self.printtable()
 
 
     def savebtn(self, row):
         self.datatab[row][1]=self.table.item(row, 4).text()
         self.datatab[row][2]=self.table.item(row, 5).text()
-        self.datatab[row][3]=self.table.item(row, 0).text()[0:2]
-        self.datatab[row][4]=self.table.item(row, 0).text()[3:5]
-        self.datatab[row][5]=self.table.item(row, 1).text()[0:2]
-        self.datatab[row][6]=self.table.item(row, 1).text()[3:5]
+        self.datatab[row][3]=self.table.item(row, 0).text().split(":")[0]
+        self.datatab[row][4]=self.table.item(row, 0).text().split(":")[1]
+        self.datatab[row][5]=self.table.item(row, 1).text().split(":")[0]
+        self.datatab[row][6]=self.table.item(row, 1).text().split(":")[1]
         self.datatab[row][7]=self.table.item(row, 2).text()
         self.datatab[row][8]=self.table.item(row, 3).text()
         self.datatab[row][9]=self.table.item(row, 6).text()
@@ -311,12 +345,15 @@ class AppWindow(QWidget):
         self.datatab[row][12]=self.table.item(row, 8).text()
         self.datatab[row][0]=self.getplatform(self.table.item(row, 4).text(),self.table.item(row, 5).text())
         self.datatab[row][11]=self.getF(self.table.item(row, 8).text(),self.table.item(row, 3).text())
-        print(self.datatab)
+        #print(self.datatab)
 
     def addline(self):
         row = len(self.datatab)
         self.datatab.append([self.getplatform(self.table.item(row, 4).text(),self.table.item(row, 5).text()),self.table.item(row, 4).text(),self.table.item(row, 5).text(),self.table.item(row, 0).text()[0:2],self.table.item(row, 0).text()[3:5],self.table.item(row, 1).text()[0:2],self.table.item(row, 1).text()[3:5],self.table.item(row, 2).text(),self.table.item(row, 3).text(),self.table.item(row, 6).text(),self.table.item(row, 7).text(),self.getF(self.table.item(row, 8).text(),self.table.item(row, 3).text()),self.table.item(row, 8).text()])
-        print(self.datatab)
+        #print(self.datatab)
+        self.printtable()
+
+    def refresh(self):
         self.printtable()
 
 #==============================main==========================================================================================================================
