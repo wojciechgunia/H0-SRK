@@ -173,13 +173,14 @@ class AppWindow(QWidget):
    def delelem(self,source):
       source.setPixmap(QPixmap())
       index = self.indextodel(source)
-      #print(index)
+      self.delinfile(index[0],index[1])
+
+   def delinfile(self,x,y):
       for i in range(1,len(self.blocks)):
-         if self.blocks[i][1]==str(index[0]) and self.blocks[i][2]==str(index[1]):
-            #print(i)
+         if self.blocks[i][1]==str(x) and self.blocks[i][2]==str(y):
             self.blocks.pop(i)
-            #print(self.blocks)
             break
+
    def indexelem(self):
       for i in range(len(self.labels)):
          for j in range(len(self.labels[i])):
@@ -270,6 +271,7 @@ class AppWindow(QWidget):
          else:
             icon=QIcon(QIcon(".\\svg\\E6.svg"))
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
+         self.delinfile(place[0],place[1])
          self.blocks.append(["1",str(place[0]),str(place[1]),itname,pos,type,cont])
 
    def addsem(self, name, type, itb, ita, pos):
@@ -283,6 +285,7 @@ class AppWindow(QWidget):
             icon=QIcon(QIcon(".\\svg\\S3.svg"))
          else:
             icon=QIcon(QIcon(".\\svg\\S4.svg"))
+         self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
          self.blocks.append(["2",str(place[0]),str(place[1]),name,pos,type,itb,ita])
 
@@ -290,6 +293,7 @@ class AppWindow(QWidget):
       if self.selected!="":
          place=self.indexelem()
          icon=QIcon(QIcon(".\\svg\\B2.svg"))
+         self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
          self.blocks.append(["3",str(place[0]),str(place[1]),name,pos,sem,it1,it2])
 
@@ -297,6 +301,7 @@ class AppWindow(QWidget):
       if self.selected!="":
          place=self.indexelem()
          icon=QIcon(QIcon(".\\svg\\E2Z.svg"))
+         self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,posr, icon)
          self.blocks.append(["4",str(place[0]),str(place[1]),itname,pos,posr,cont])
 
@@ -317,6 +322,7 @@ class AppWindow(QWidget):
             icon=QIcon(QIcon(".\\svg\\I3.svg"))
          elif sel=="Nast":
             icon=QIcon(QIcon(".\\svg\\I4.svg"))
+         self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
          self.blocks.append(["5",str(place[0]),str(place[1]),itname,pos,sel])
       
