@@ -314,7 +314,7 @@ class AppWindow(QWidget):
 
     def exebtn(self, row):
         ser = start_window.getser()
-        if self.datatab[row][11]=="F1":
+        if self.datatab[row][8]==self.stationName:
             stacja = self.datatab[row][7]
             godzina = self.datatab[row][3]+":"+self.datatab[row][4]
         else:
@@ -326,9 +326,13 @@ class AppWindow(QWidget):
         ser.write(str.encode(str(extext)))
 
     def delbtn(self, row):
-        del self.datatab[row]
-        #print(self.datatab)
-        self.printtable()
+        should_clouse = QMessageBox.question(self,"Delete item","Do you want to delete item?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if should_clouse == QMessageBox.StandardButton.Yes:
+            del self.datatab[row]
+            #print(self.datatab)
+            self.printtable()
+
+
 
 
     def savebtn(self, row):

@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QScrollArea, QWidget, QMenu, QTabWidget, QListWidget, QPushButton, QToolButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QGridLayout, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
-from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent, QIcon, QAction, QPainter, QTransform, QImage
+from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent, QIcon, QAction, QPainter, QTransform, QImage, QFont, QPalette
 from PySide6.QtCore import Qt, SIGNAL, QObject, QSize, QEvent, QRectF, QRect
 from functools import partial
 
@@ -94,8 +94,8 @@ class AppWindow(QWidget):
       
 
    def setup(self):
-      width = 1300
-      height = 700
+      width = 1220
+      height = 620
 
       layout = QHBoxLayout()
       layout.setAlignment(Qt.AlignCenter)
@@ -124,7 +124,7 @@ class AppWindow(QWidget):
       self.setMinimumSize(width, height)
       self.setGeometry(50, 50, 1200, 600)
       self.setWindowTitle("SRK H0")
-      self.setStyleSheet("background-color: black;color: white;")
+      self.setStyleSheet("""QWidget{background-color: black; color: white;} QLabel#Yellow{color: yellow} QLabel#Blue{color: rgb(3, 227, 252)} QLabel#Gray{color: rgb(176, 176, 176)}""")
 
    def closeEvent(self, event: QCloseEvent):
       for i in self.labels:
@@ -142,7 +142,7 @@ class AppWindow(QWidget):
          tools_window.close()
          event.accept()
       else:
-         self.setStyleSheet("background-color: black;color: white;")
+         self.setStyleSheet("""QWidget{background-color: black; color: white;} QLabel#Yellow{color: yellow} QLabel#Blue{color: rgb(3, 227, 252)} QLabel#Gray{color: rgb(176, 176, 176)}""")
          for i in self.labels:
             for j in i:
                j.setStyleSheet("border: 1px solid white;")
@@ -244,6 +244,37 @@ class AppWindow(QWidget):
                icon=QIcon(QIcon(".\\svg\\I4.svg"))
             self.drawBlock(i[1],i[2],i[4],"", icon)
 
+         if i[0]=="6":
+            i[1]=int(i[1])
+            i[2]=int(i[2])
+            if i[5]=="Yellow":
+               self.labels[i[1]][i[2]].setObjectName("Yellow")
+            elif i[5]=="Blue":
+               self.labels[i[1]][i[2]].setObjectName("Blue")
+            elif i[5]=="White":
+               self.labels[i[1]][i[2]].setObjectName("Gray")
+            
+               
+            self.delinfile(i[1],i[2])
+            self.labels[i[1]][i[2]].setText(i[3])
+            self.labels[i[1]][i[2]].setAutoFillBackground(True)
+            self.labels[i[1]][i[2]].setFont(QFont('Arial', 8))
+
+            if i[4]=="Lewo":
+               self.labels[i[1]][i[2]].setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+            if i[4]=="Prawo":
+               self.labels[i[1]][i[2]].setAlignment(Qt.AlignVCenter | Qt.AlignRight)
+            elif i[4]=="Góra":
+               self.labels[i[1]][i[2]].setAlignment(Qt.AlignBaseline)
+            elif i[4]=="Dół":
+               self.labels[i[1]][i[2]].setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
+            else:
+               self.labels[i[1]][i[2]].setAlignment(Qt.AlignCenter)
+            
+            i[1]=str(i[1])
+            i[2]=str(i[2])
+      self.setStyleSheet("""QWidget{background-color: black; color: white;} QLabel#Yellow{color: yellow} QLabel#Blue{color: rgb(3, 227, 252)} QLabel#Gray{color: rgb(176, 176, 176)}""")
+
    def drawBlock(self, x, y, pos, posr, icon):
       x=int(x)
       y=int(y)
@@ -272,9 +303,9 @@ class AppWindow(QWidget):
             icon=QIcon(QIcon(".\\svg\\E6.svg"))
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
          self.delinfile(place[0],place[1])
-         self.blocks.append(["1",str(place[0]),str(place[1]),itname,pos,type,cont])
+         self.blocks.append(["1",str(place[0]),str(place[1]),itname,pos,type,"0",cont])
 
-   def addsem(self, name, type, itb, ita, pos):
+   def addsem(self, name, type, itb, ita, pos, To):
       if self.selected!="":
          place=self.indexelem()
          if type=="Sem":
@@ -287,7 +318,7 @@ class AppWindow(QWidget):
             icon=QIcon(QIcon(".\\svg\\S4.svg"))
          self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
-         self.blocks.append(["2",str(place[0]),str(place[1]),name,pos,type,itb,ita])
+         self.blocks.append(["2",str(place[0]),str(place[1]),name,pos,type,"0","0",To,itb,ita])
 
    def addBL(self, name, sem, it1, it2, pos):
       if self.selected!="":
@@ -295,15 +326,43 @@ class AppWindow(QWidget):
          icon=QIcon(QIcon(".\\svg\\B2.svg"))
          self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
-         self.blocks.append(["3",str(place[0]),str(place[1]),name,pos,sem,it1,it2])
+         self.blocks.append(["3",str(place[0]),str(place[1]),name,pos,sem,"6",it1,it2])
 
-   def addCR(self, pos, posr, itname, cont):
+   def addCR(self, pos, posr, name, itname, cont):
       if self.selected!="":
          place=self.indexelem()
          icon=QIcon(QIcon(".\\svg\\E2Z.svg"))
          self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,posr, icon)
-         self.blocks.append(["4",str(place[0]),str(place[1]),itname,pos,posr,cont])
+         self.blocks.append(["4",str(place[0]),str(place[1]),itname,pos,posr,"0",cont,name,"1"])
+
+   def addTXT(self, text, sel, pos):
+      if self.selected!="":
+         place=self.indexelem()
+         QLabel().setObjectName
+         if sel=="Yellow":
+            self.labels[place[0]][place[1]].setObjectName("Yellow")
+         elif sel=="Blue":
+            self.labels[place[0]][place[1]].setObjectName("Blue")
+         elif sel=="White":
+            self.labels[place[0]][place[1]].setObjectName("Gray")
+            
+         self.delinfile(place[0],place[1])
+         self.labels[place[0]][place[1]].setText(text)
+         self.labels[place[0]][place[1]].setAutoFillBackground(True)
+         self.labels[place[0]][place[1]].setFont(QFont('Arial', 8))
+
+         if pos=="Lewo":
+            self.labels[place[0]][place[1]].setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+         if pos=="Prawo":
+            self.labels[place[0]][place[1]].setAlignment(Qt.AlignVCenter | Qt.AlignRight)
+         elif pos=="Góra":
+            self.labels[place[0]][place[1]].setAlignment(Qt.AlignBaseline)
+         elif pos=="Dół":
+            self.labels[place[0]][place[1]].setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
+         else:
+            self.labels[place[0]][place[1]].setAlignment(Qt.AlignCenter)
+         self.blocks.append(["6",str(place[0]),str(place[1]),text,pos,sel])
 
    def addEl(self, itname, sel, pos):
       if self.selected!="":
@@ -324,7 +383,7 @@ class AppWindow(QWidget):
             icon=QIcon(QIcon(".\\svg\\I4.svg"))
          self.delinfile(place[0],place[1])
          self.drawBlock(str(place[0]),str(place[1]),pos,"", icon)
-         self.blocks.append(["5",str(place[0]),str(place[1]),itname,pos,sel])
+         self.blocks.append(["5",str(place[0]),str(place[1]),itname,pos,sel,"0"])
       
 
 
@@ -352,10 +411,12 @@ class Tools(QWidget):
       self.tab3 = QWidget()
       self.tab4 = QWidget()
       self.tab5 = QWidget()
+      self.tab6 = QWidget()
       self.tabs.addTab(self.tab1,"Track")
       self.tabs.addTab(self.tab2,"Sem")
       self.tabs.addTab(self.tab3,"BL")
       self.tabs.addTab(self.tab4,"Cross")
+      self.tabs.addTab(self.tab6,"Text")
       self.tabs.addTab(self.tab5,"Else")
 
       tab1layout = QVBoxLayout()
@@ -410,6 +471,11 @@ class Tools(QWidget):
       self.tab2rodz.addItems(["Sem","Sem+m","man","To"])
       tab2layout.addWidget(self.tab2rodz)
 
+      tab2label4 = QLabel("To sem")
+      tab2layout.addWidget(tab2label4)
+      self.tab2to = QLineEdit(self)
+      tab2layout.addWidget(self.tab2to)
+
       tab2btn = QPushButton("Dodaj",self)
       tab2btn.clicked.connect(self.addsem)
       tab2layout.addWidget(tab2btn)
@@ -460,6 +526,11 @@ class Tools(QWidget):
       self.tab4con.addItems(["Kontrolowany","Nie kontrolowany"])
       tab4layout.addWidget(self.tab4con)
 
+      tab4label2 = QLabel("Name")
+      tab4layout.addWidget(tab4label2)
+      self.tab4name = QLineEdit(self)
+      tab4layout.addWidget(self.tab4name)
+
       tab4label = QLabel("Iz/It name")
       tab4layout.addWidget(tab4label)
       self.tab4it = QLineEdit(self)
@@ -477,6 +548,27 @@ class Tools(QWidget):
       tab4btn.clicked.connect(self.addcross)
       tab4layout.addWidget(tab4btn)
       self.tab4.setLayout(tab4layout)
+
+      tab6layout = QVBoxLayout()
+      tab6layout.setAlignment(Qt.AlignTop)
+
+      tab6label = QLabel("Text")
+      tab6layout.addWidget(tab6label)
+      self.tab6it = QLineEdit(self)
+      tab6layout.addWidget(self.tab6it)
+
+      self.tab6sel = QComboBox(self)
+      self.tab6sel.addItems(["White", "Yellow", "Blue"])
+      tab6layout.addWidget(self.tab6sel)
+
+      self.tab6poz = QComboBox(self)
+      self.tab6poz.addItems(["Prawo","Lewo","Góra","Dół", "Środek"])
+      tab6layout.addWidget(self.tab6poz)
+
+      tab6btn = QPushButton("Dodaj",self)
+      tab6btn.clicked.connect(self.addtext)
+      tab6layout.addWidget(tab6btn)
+      self.tab6.setLayout(tab6layout)
 
       tab5layout = QVBoxLayout()
       tab5layout.setAlignment(Qt.AlignTop)
@@ -505,13 +597,16 @@ class Tools(QWidget):
       app_window.addtrack(self.tab1poz.currentText(),self.tab1type.currentText(),self.tab1con.currentText(),self.tab1it.text())
 
    def addsem(self):
-      app_window.addsem(self.tab2name.text(),self.tab2rodz.currentText(),self.tab2itb.text(),self.tab2ita.text(),self.tab2poz.currentText())
+      app_window.addsem(self.tab2name.text(),self.tab2rodz.currentText(),self.tab2itb.text(),self.tab2ita.text(),self.tab2poz.currentText(),self.tab2to.text())
 
    def addBL(self):
       app_window.addBL(self.tab3name.text(),self.tab3semw.text(),self.tab3it1.text(),self.tab3it2.text(),self.tab3poz.currentText())
 
    def addcross(self):
-      app_window.addCR(self.tab4poz.currentText(),self.tab4pozr.currentText(),self.tab4it.text(),self.tab4con.currentText())
+      app_window.addCR(self.tab4poz.currentText(),self.tab4pozr.currentText(),self.tab4name.text(),self.tab4it.text(),self.tab4con.currentText())
+
+   def addtext(self):
+      app_window.addTXT(self.tab6it.text(),self.tab6sel.currentText(),self.tab6poz.currentText())
 
    def addelse(self):
       app_window.addEl(self.tab5it.text(),self.tab5sel.currentText(),self.tab5poz.currentText())
