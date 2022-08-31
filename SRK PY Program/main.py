@@ -2,7 +2,7 @@ from asyncio.windows_events import NULL
 from re import I
 from PySide6.QtWidgets import QApplication, QScrollArea, QWidget, QMenu, QTabWidget, QListWidget, QPushButton, QToolButton, QMessageBox, QLabel, QLineEdit, QFileDialog, QDialog, QComboBox, QGridLayout, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QCloseEvent, QPixmap, QFileOpenEvent, QIcon, QAction, QPainter, QTransform, QImage, QFont
-from PySide6.QtCore import Qt, SIGNAL, QObject, QSize, QEvent, QRectF, QRect, QTimer, QThread
+from PySide6.QtCore import Qt, SIGNAL, QObject, QSize, QEvent, QRectF, QRect, QTimer, QThread, Signal
 from functools import partial
 import serial
 import serial.tools.list_ports
@@ -14,6 +14,28 @@ fpath=""
 coms=[comport.device for comport in serial.tools.list_ports.comports()]
 f=""
 
+
+class TimerThread(QThread):
+   update = Signal()
+
+   def __init__(self, event):
+      QThread.__init__(self)
+      self.stopped = event
+
+   def run(self):
+      while not self.stopped: 
+         sleep(0.8)
+         self.update.emit()
+
+   def stop(self):
+      self.stopped = True
+
+   def play(self):
+      self.stopped = False
+
+   def getStat(self):
+      return self.stopped
+         
 
 #=============================Start=====================================================================================================================================
 class StartWindow(QWidget):
@@ -105,6 +127,7 @@ class AppWindow(QWidget):
       self.przebiegi=[]
       self.manewry=[]
       self.iz=[]
+      self.BLTab=[]
       #=================================
 
       for i in range(int(self.wsizeX/self.ksizeX)):
@@ -219,25 +242,25 @@ class AppWindow(QWidget):
             
          if self.blocks[int(ind[0])][int(ind[1])][0]=="3":
             wbl=menu.addAction('Wbl')
-            if self.blocks[int(ind[0])][int(ind[1])][6]!="7" and self.blocks[int(ind[0])][int(ind[1])][6]!="71" and self.blocks[int(ind[0])][int(ind[1])][6]!="6":
+            if self.blocks[int(ind[0])][int(ind[1])][6]!="1" and self.blocks[int(ind[0])][int(ind[1])][6]!="2" and self.blocks[int(ind[0])][int(ind[1])][6]!="21":
                wbl.setEnabled(False)
             if wbl:
-               if self.blocks[int(ind[0])][int(ind[1])][6]=="7" or self.blocks[int(ind[0])][int(ind[1])][6]=="71":
+               if self.blocks[int(ind[0])][int(ind[1])][6]=="2" or self.blocks[int(ind[0])][int(ind[1])][6]=="21":
                   wbl.setText("oWbl")
-                  wbl.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 6))
+                  wbl.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 1))
                else:
-                  wbl.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 7))
+                  wbl.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 2))
 
             poz=menu.addAction('Poz')
-            if self.blocks[int(ind[0])][int(ind[1])][6]!="7" and self.blocks[int(ind[0])][int(ind[1])][6]!="71":
+            if self.blocks[int(ind[0])][int(ind[1])][6]!="3" and self.blocks[int(ind[0])][int(ind[1])][6]!="31":
                poz.setEnabled(False)
             if poz:
-               poz.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 0))
+               poz.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 4))
             ko=menu.addAction('Ko')
             if self.blocks[int(ind[0])][int(ind[1])][6]!="9":
                ko.setEnabled(False)
             if ko:
-               ko.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 6))
+               ko.triggered.connect(partial(self.BL, int(ind[0]), int(ind[1]), 1))
             menu.addSeparator()
             poc=menu.addAction('Pociąg')
             poc.setEnabled(False)
@@ -315,23 +338,23 @@ class AppWindow(QWidget):
                return [i,j]
 
    def setSZ(self,ind):
-      ser = start_window.getser()
       extext=str(self.blocks[ind[0]][ind[1]][3])+"Sz"
-      ser.write(str.encode(str(extext)))
+      self.writeserial.append(extext)
       self.blocks[ind[0]][ind[1]][6]="0"
-      self.blocks[ind[0]][ind[1]][7]="6"
+      self.blocks[ind[0]][ind[1]][7]="7"
       self.drawBlock(self.blocks[ind[0]][ind[1]][1],self.blocks[ind[0]][ind[1]][2])
-      self.blocks[ind[0]][ind[1]].append(QTimer())
-      self.blocks[ind[0]][ind[1]][11].timeout.connect(partial(self.blink,ind[0],ind[1]))
-      self.blocks[ind[0]][ind[1]][11].start(800)
+      if len(self.blocks[ind[0]][ind[1]])==14 and self.blocks[ind[0]][ind[1]][13].getStat()==True:
+         self.blocks[ind[0]][ind[1]].pop()
+      if len(self.blocks[ind[0]][ind[1]])==13:
+         self.blocks[ind[0]][ind[1]].append(TimerThread(False))
+         self.blocks[ind[0]][ind[1]][13].update.connect(partial(self.blink,ind[0],ind[1]))
+         self.blocks[ind[0]][ind[1]][13].start()
 
    def setS1(self,ind):
-      ser = start_window.getser()
       extext=str(self.blocks[ind[0]][ind[1]][3])+"S1"
-      ser.write(str.encode(str(extext)))
-      if len(self.blocks[ind[0]][ind[1]])>11:
-         self.blocks[ind[0]][ind[1]][11].stop()
-         self.blocks[ind[0]][ind[1]].pop()
+      self.writeserial.append(extext)
+      if len(self.blocks[ind[0]][ind[1]])>13:
+         self.blocks[ind[0]][ind[1]][13].stop()
       self.blocks[ind[0]][ind[1]][7]="0"
       if self.FindinPrzebiegi([ind[0],ind[1]])>0:
          self.blocks[ind[0]][ind[1]][6]="2"
@@ -448,7 +471,7 @@ class AppWindow(QWidget):
          
       
    
-   def findPrzebieg(self):
+   def findPrzebieg(self,man):
       przebieg=[]
       croppot=[]
       rev=0
@@ -457,6 +480,7 @@ class AppWindow(QWidget):
       yc=0
       changekier=0
       changeval=0
+      zwrot=0
       if(self.blocks[self.selected2[1]][self.selected2[2]][4]=="Prawo" or self.blocks[self.selected2[1]][self.selected2[2]][4]=="Lewo"):
          changekier=1
       if self.blocks[self.selected2[1]][self.selected2[2]][0]=="3" or self.blocks[self.selected2[1]][self.selected2[2]][0]=="5":
@@ -489,13 +513,19 @@ class AppWindow(QWidget):
             xc=0
             yc=0
          #print(x,y)
+         if self.blocks[x][y][6]!="0" and man==False and [x,y]!=[self.selected1[1],self.selected1[2]]:
+            return [],[],0,0,0
+         elif self.blocks[x][y][6]!="0" and self.blocks[x][y][6]!="2" and man==True and [x,y]!=[self.selected1[1],self.selected1[2]]:
+            return [],[],0,0,0
+
          if self.labels[x][y]==self.labels[x2][y2]:
             #przebieg.append([x,y])
             fin=1
             break
+
          elif self.blocks[x][y][0]=="3":
             fin=fin+1
-            przebieg=[]
+            przebieg=[]   
          if nextcross==1:
             if self.blocks[x][y][0]=="4":
                croppot.append([str(x),str(y),"0"])
@@ -513,6 +543,9 @@ class AppWindow(QWidget):
             przebieg.append([x,y])
             if self.blocks[x][y][0]=="4":
                croppot.append([str(x),str(y),"1"])
+               zwrot=1
+            else:
+               zwrot=0
          elif ((self.blocks[x+xc][y+yc]=="" or self.blocks[x+xc][y+yc][0]=="6") or (xc==0 and yc==0)) and rev==1:
             if self.blocks[x1][y1][4]=="Prawo":
                x=x+1
@@ -525,8 +558,14 @@ class AppWindow(QWidget):
             przebieg.append([x,y])
             if self.blocks[x][y][0]=="4":
                croppot.append([str(x),str(y),"1"])
+               zwrot=1
+            else:
+               zwrot=0
          else:
-            
+            if zwrot==1:
+               zwrot=0
+               croppot.pop()
+               croppot.append([str(x-xc),str(y-yc),"0"])
             if self.blocks[x][y][0]=="4":
                croppot.append([str(x),str(y),"0"])
                   
@@ -573,7 +612,7 @@ class AppWindow(QWidget):
       
 
    def pociag(self):
-      przebieg, croppot, fin, x1, y1=self.findPrzebieg()
+      przebieg, croppot, fin, x1, y1=self.findPrzebieg(False)
       
       if fin==1:
          for j in przebieg:
@@ -603,6 +642,9 @@ class AppWindow(QWidget):
                   self.changeSem(self.selected2[1],self.selected2[2])
                elif self.blocks[self.selected2[1]][self.selected2[2]][0]=="2" and self.FindinPrzebiegi([self.selected2[1],self.selected2[2]])==2:
                   self.blocks[self.selected2[1]][self.selected2[2]][6]="1"
+               elif self.blocks[self.selected2[1]][self.selected2[2]][0]=="3":
+                  self.writeserial.append("B;"+self.blocks[self.selected2[1]][self.selected2[2]][3]+";DU")
+                  print("B;"+self.blocks[self.selected2[1]][self.selected2[2]][3]+";DU")
             elif((self.blocks[j[0]][j[1]][0]=="2" and (self.blocks[j[0]][j[1]][5]=="Sem" or self.blocks[j[0]][j[1]][5]=="Sem+m") and self.blocks[j[0]][j[1]][4]==self.blocks[x1][y1][4])):
                self.blocks[j[0]][j[1]][6]="1"
                syg=self.findSignal(j[0],j[1])
@@ -614,11 +656,6 @@ class AppWindow(QWidget):
                if self.blocks[j[0]][j[1]][0]=="4" and self.blocks[j[0]][j[1]][9]=="0":
                   self.crossspeed=True
                self.blocks[j[0]][j[1]][6]="1"
-         
-
-         
-         
-         
 
          if self.blocks[self.selected2[1]][self.selected2[2]][0]=="3":
             self.blocks[self.selected2[1]][self.selected2[2]][6]="0"
@@ -649,7 +686,7 @@ class AppWindow(QWidget):
    
    
    def manewr(self):
-      przebieg, croppot, fin, x1, y1=self.findPrzebieg()
+      przebieg, croppot, fin, x1, y1=self.findPrzebieg(True)
 
          
       
@@ -694,38 +731,62 @@ class AppWindow(QWidget):
       self.blocks[x][y][6]=str(opt)
       if self.selected2=="":
          self.selclear()
-      if opt==7:
-         self.blocks[x][y].append(QTimer())
-         self.blocks[x][y][9].timeout.connect(partial(self.blinkBL,x,y))
-         self.blocks[x][y][9].start(800)
       if opt==0:
          self.blocks[x][y][9].stop()
-         self.blocks[x][y].pop()
-         self.labels[x][y].show()
-      if opt==6:
-         self.labels[x][y].show()
-         if len(self.blocks[x][y])>9:
-            self.blocks[x][y][9].stop()
-            self.blocks[x][y].pop()
-
-         
+      if opt==1:
+          self.writeserial.append("B;"+self.blocks[x][y][3]+";Ko")
+          print("B;"+self.blocks[x][y][3]+";Ko")
+      elif opt==2:
+         self.writeserial.append("B;"+self.blocks[x][y][3]+";WBL")
+         print("B;"+self.blocks[x][y][3]+";WBL")
+         self.blocks[x][y][9].play()
+         self.blocks[x][y][9].start()
+      elif opt==3:
+         self.blocks[x][y][9].play()
+         self.blocks[x][y][9].start()
+      elif opt==4:
+         self.writeserial.append("B;"+self.blocks[x][y][3]+";Poz")
+         print("B;"+self.blocks[x][y][3]+";Poz")
+         self.blocks[x][y][9].stop()
+      elif opt==5:
+         self.blocks[x][y][9].play()
+         self.blocks[x][y][9].start()
+      elif opt==6:
+         self.blocks[x][y][9].stop()
+      elif opt==7:
+         self.blocks[x][y][9].stop()
       self.drawBlock(x,y)
 
    def blink(self, x, y):
-      if self.blocks[x][y][7]=="6":
+      if self.blocks[x][y][7]=="7":
          self.blocks[x][y][7]="0"
          self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
-      else:
-         self.blocks[x][y][7]="6"
+      elif self.blocks[x][y][7]=="0" and self.blocks[x][y][13].getStat()==False:
+         self.blocks[x][y][7]="7"
          self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
 
    def blinkBL(self, x, y):
-      if self.blocks[x][y][6]=="7":
-         self.blocks[x][y][6]="71"
+      x=int(x)
+      y=int(y)
+      if self.blocks[x][y][6]=="2" and self.blocks[x][y][9].getStat()==False:
+         self.blocks[x][y][6]="21"
          self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
-      else:
-         self.blocks[x][y][6]="7"
+      elif self.blocks[x][y][6]=="21":
+         self.blocks[x][y][6]="2"
          self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
+      elif self.blocks[x][y][6]=="3" and self.blocks[x][y][9].getStat()==False:
+         self.blocks[x][y][6]="31"
+         self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
+      elif self.blocks[x][y][6]=="31":
+         self.blocks[x][y][6]="3"
+         self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
+      elif self.blocks[x][y][6]=="5" and self.blocks[x][y][9].getStat()==False:
+         self.blocks[x][y][6]="51"
+         self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
+      elif self.blocks[x][y][6]=="51":
+         self.blocks[x][y][6]="5"
+         self.drawBlock(self.blocks[x][y][1],self.blocks[x][y][2])
+      
       
 
    def croschange(self, x, y, opt):
@@ -760,6 +821,10 @@ class AppWindow(QWidget):
             if j!="" and j[0]=="1":
                if [j[3],"0"] not in self.iz:
                   self.iz.append([j[3],"0"])
+            if j!="" and j[0]=="3":
+               j.append(TimerThread(False))
+               j[9].update.connect(partial(self.blinkBL,j[1],j[2]))
+               self.BLTab.append(j)
             if j!="" and j[0]=="2":
                #print(j)
                if j[8]!="":
@@ -827,25 +892,48 @@ class AppWindow(QWidget):
             if j!="" and j[0]!="6":
                if j[0]=="1" or j[0]=="4" or j[0]=="5":
                   if j[3]==iz:
+                     self.delinprzebieg(int(j[1]),int(j[2]))
                      j[6]="0"
                if j[0]=="2" and (j[9]==iz or j[10]==iz):
+                  self.delinprzebieg(int(j[1]),int(j[2]))
                   j[6]="0"
                   j[7]="0"
                   self.changeSem(j[1],j[2])
                self.drawBlock(j[1],j[2])
       self.IzChange(iz,"0")
 
+   def delinprzebieg(self,x,y):
+      for i in range(len(self.przebiegi)):
+         for j in range(len(self.przebiegi[i])):
+            if self.przebiegi[i][j] == [x,y]:
+               self.przebiegi[i].pop(j)
+               #print(self.przebiegi)
+               break
+         if len(self.przebiegi[i])==0:
+            self.przebiegi.pop(i)
+            break
+         
+
+
    def changeIz(self,x,y,rev,ko):
       kier = self.blocks[int(x)][int(y)][4]
       xk=0
       yk=0
-      if(kier=="Lewo" and not rev) or (kier=="Prawo" and rev):
+      if kier=="Prawo" and rev:
+         kier="Lewo"
+      elif kier=="Lewo" and rev:
+         kier="Prawo"
+      elif kier=="Dół" and rev:
+         kier="Góra"
+      elif kier=="Góra" and rev:
+         kier="Dół"
+      if kier=="Lewo":
          xk=-1
-      elif(kier=="Prawo" and not rev) or (kier=="Lewo" and rev):
+      elif kier=="Prawo":
          xk=1
-      elif(kier=="Góra" and not rev) or (kier=="Dół" and rev):
+      elif kier=="Góra":
          yk=-1
-      elif(kier=="Dół" and not rev) or (kier=="Góra" and rev):
+      elif kier=="Dół":
          yk=1
       xz=int(x)+xk
       yz=int(y)+yk
@@ -853,8 +941,11 @@ class AppWindow(QWidget):
       if not ko and self.blocks[int(x)][int(y)][0]=="2":
          self.blocks[int(x)][int(y)][6]="2"
          self.changeTo(self.blocks[int(x)][int(y)][8],"2","2")
+         self.delinprzebieg(int(x),int(y))
          self.drawBlock(int(x),int(y))
       if ko and self.blocks[int(x)][int(y)][0]=="2":
+         if len(self.blocks[int(x)][int(y)])>13:
+            self.blocks[int(x)][int(y)][13].stop()
          self.blocks[int(x)][int(y)][6]="0"
          self.changeTo(self.blocks[int(x)][int(y)][8],"0","0")
          self.drawBlock(int(x),int(y))
@@ -876,13 +967,14 @@ class AppWindow(QWidget):
                   yk=-1
          else:
             if (self.blocks[xz][yz][0]=="2" and (self.blocks[xz][yz][5]=="Sem" or self.blocks[xz][yz][5]=="Sem+m")) or self.blocks[xz][yz][0]=="3":
-               if self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][6]=="0":
+               if self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][6]=="0" and self.blocks[xz][yz][4]==kier:
                   self.blocks[xz][yz][6]="2"
                   self.changeTo(self.blocks[xz][yz][8],"2","2")
-               elif self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][6]=="2":
+               elif self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][6]=="2" and self.blocks[xz][yz][4]==kier:
                   self.blocks[xz][yz][6]="0"
                   self.changeTo(self.blocks[xz][yz][8],"0","0")
                self.drawBlock(xz,yz)
+               self.delinprzebieg(int(xz),int(yz))
                break
             if self.blocks[xz][yz][0]=="4" and self.blocks[xz][yz][9]=="0":
                turn=1
@@ -907,6 +999,7 @@ class AppWindow(QWidget):
                   elif self.blocks[xz-1][yz]!="" and self.blocks[xz-1][yz][0]!="6":
                      xk=-1
                      yk=0
+            self.delinprzebieg(int(xz),int(yz))
             xz=xz+xk
             yz=yz+yk
 
@@ -934,6 +1027,12 @@ class AppWindow(QWidget):
             if j!="" and j[0]=="3" and j[5]==namesem:
                return j[1],j[2]
 
+   def findBL2(self,name):
+      for i in self.blocks:
+         for j in i:
+            if j!="" and j[0]=="3" and j[3]==name:
+               return int(j[1]),int(j[2])
+
    def readSerial(self):
       while True:
          ser = start_window.getser()
@@ -944,11 +1043,27 @@ class AppWindow(QWidget):
          if len(self.writeserial)>0:
             ser.write(str.encode(str(self.writeserial[0])))
             self.writeserial.pop(0)
-         if data_raw!="" and len(data_raw)==4:
-            if data_raw[3]=="K":
+         if data_raw!="":
+            
+            if data_raw[0]=="B":
+               if len(data_raw)==3:
+                  x,y=self.findBL2(data_raw[1])
+                  if data_raw[2]=="WBL" and self.blocks[x][y][6]=="1":
+                     self.BL(x,y,3)
+                  elif data_raw[2]=="Poz" and (self.blocks[x][y][6]=="2" or self.blocks[x][y][6]=="21"):
+                     self.BL(x,y,0)
+                  elif data_raw[2]=="DU" and self.blocks[x][y][6]=="4":
+                     self.BL(x,y,5)
+                  elif data_raw[2]=="PS" and (self.blocks[x][y][6]=="5" or self.blocks[x][y][6]=="51"):
+                     self.BL(x,y,7)
+                  elif data_raw[2]=="Ko" and self.blocks[x][y][6]=="6":
+                     self.BL(x,y,1)
+                  
+            elif len(data_raw)==4 and data_raw[3]=="K":
                if self.IzCheck(data_raw[0])=="3" or self.IzCheck(data_raw[1])=="3":
                   x,y=self.findBL(data_raw[2])
-                  self.blocks[int(x)][int(y)][6]="9"
+                  if self.blocks[int(x)][int(y)][6]=="7":
+                     self.BL(int(x),int(y),9)
                if self.IzCheck(data_raw[0])=="2" or self.IzCheck(data_raw[0])=="3":
                   x,y=self.findinblocks(data_raw[2])
                   self.IzChange(data_raw[0],"0")
@@ -957,13 +1072,13 @@ class AppWindow(QWidget):
                   x,y=self.findinblocks(data_raw[2])
                   self.IzChange(data_raw[1],"0")
                   self.changeIz(x,y,False,True)
-            else:
+            elif len(data_raw)==4 and data_raw[3]=="S":
                if data_raw[0]==data_raw[1]:
                   if self.IzCheck(data_raw[0])!="1":
                      self.IzChange(data_raw[0],"3")
                      x,y=self.findinblocks(data_raw[2])
                      self.changeIz(x,y,True,False)
-                  if self.IzCheck(data_raw[0])!="1":
+                  elif self.IzCheck(data_raw[0])!="1":
                      self.IzChange(data_raw[0],"3")
                      x,y=self.findinblocks(data_raw[2])
                      self.changeIz(x,y,True,False)
@@ -974,15 +1089,29 @@ class AppWindow(QWidget):
                         self.IzChange(data_raw[0],"2")
                      self.IzChange(data_raw[1],"1")
                      x,y=self.findinblocks(data_raw[2])
+                     self.PSCheck(data_raw[1])
                      self.changeIz(x,y,False,False)
                   elif self.IzCheck(data_raw[1])=="1" or self.IzCheck(data_raw[1])=="3":
                      if self.IzCheck(data_raw[1])=="1":
                         self.IzChange(data_raw[1],"2")
                      self.IzChange(data_raw[0],"1")
                      x,y=self.findinblocks(data_raw[2])
+                     self.PSCheck(data_raw[0])
                      self.changeIz(x,y,True,False)
          if(self.serialend):
             break
+
+   def PSCheck(self,izname):
+      for i in self.BLTab:
+         if i[8]==izname:
+            for j in self.iz:
+               if j[0]==i[7]:
+                  if j[1]=="1":
+                     self.writeserial.append("B;"+i[3]+";PS")
+                     print("B;"+i[3]+";PS")
+                     self.blocks[int(i[1])][int(i[2])][6]="6"
+                     self.drawBlock(i[1],i[2])
+                     return 0
 
 
    def drawBlock(self, x, y):
@@ -1024,15 +1153,27 @@ class AppWindow(QWidget):
 
       if i[0]=="3":
             if i[6]=="0":
-               icon=QIcon(QIcon(".\\svg\\B23.svg"))
-            elif i[6]=="71":
-               icon=QIcon(QIcon(".\\svg\\B2.svg"))
-            elif i[6]=="6":
-               icon=QIcon(QIcon(".\\svg\\B1.svg"))
-            elif i[6]=="7":
                icon=QIcon(QIcon(".\\svg\\B3.svg"))
+            elif i[6]=="1":
+               icon=QIcon(QIcon(".\\svg\\B1.svg"))
             elif i[6]=="2":
+               icon=QIcon(QIcon(".\\svg\\B3.svg"))
+            elif i[6]=="3":
+               icon=QIcon(QIcon(".\\svg\\B23.svg"))
+            elif i[6]=="4":
+               icon=QIcon(QIcon(".\\svg\\B23.svg"))
+            elif i[6]=="5":
+               icon=QIcon(QIcon(".\\svg\\B24.svg"))
+            elif i[6]=="6":
                icon=QIcon(QIcon(".\\svg\\B4.svg"))
+            elif i[6]=="7":
+               icon=QIcon(QIcon(".\\svg\\B24.svg"))
+            elif i[6]=="21":
+               icon=QIcon(QIcon(".\\svg\\B2.svg"))
+            elif i[6]=="31":
+               icon=QIcon(QIcon(".\\svg\\B22.svg"))
+            elif i[6]=="51":
+               icon=QIcon(QIcon(".\\svg\\B22.svg"))
             elif i[6]=="9":
                icon=QIcon(QIcon(".\\svg\\B24.svg"))
             
