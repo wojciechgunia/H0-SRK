@@ -158,15 +158,6 @@ class AppWindow(QWidget):
       self.win.setLayout(self.layout)
       self.win.setFixedSize(self.wsizeX,self.wsizeY)
       self.layoutmain.addWidget(self.win)
-      
-      for i in range(int(self.wsizeX/self.ksizeX)):
-         labell=[]
-         for j in range(int(self.wsizeY/self.ksizeY)):
-            labell.append(QLabel(self))
-            labell[j].setFixedSize(self.ksizeX,self.ksizeY)
-            labell[j].installEventFilter(self)
-            self.layout.addWidget(labell[j],j,i)
-         self.labels.append(labell)
 
       self.setMinimumSize(width, height)
       self.setGeometry(50, 50, 1200, 600)
@@ -338,7 +329,7 @@ class AppWindow(QWidget):
                return [i,j]
 
    def setSZ(self,ind):
-      extext=str(self.blocks[ind[0]][ind[1]][3])+"Sz"
+      extext="S"+str(self.blocks[ind[0]][ind[1]][3])+"Sz"
       self.writeserial.append(extext)
       self.blocks[ind[0]][ind[1]][6]="0"
       self.blocks[ind[0]][ind[1]][7]="7"
@@ -351,7 +342,7 @@ class AppWindow(QWidget):
          self.blocks[ind[0]][ind[1]][13].start()
 
    def setS1(self,ind):
-      extext=str(self.blocks[ind[0]][ind[1]][3])+"S1"
+      extext="S"+str(self.blocks[ind[0]][ind[1]][3])+"S1"
       self.writeserial.append(extext)
       if len(self.blocks[ind[0]][ind[1]])>13:
          self.blocks[ind[0]][ind[1]][13].stop()
@@ -808,6 +799,21 @@ class AppWindow(QWidget):
       for i in range(len(self.blockses)):
          self.blockses[i]=self.blockses[i].replace("\n","")
          self.blockses[i]=self.blockses[i].split(";")
+         if i==0:
+            self.ksizeX=int(self.blockses[i][2])
+            self.ksizeY=int(self.blockses[i][3])
+            self.wsizeX=int(self.blockses[i][0])
+            self.wsizeY=int(self.blockses[i][1])
+            self.win.setFixedSize(self.wsizeX,self.wsizeY)
+            self.setMinimumSize(self.wsizeX,self.wsizeY+100)
+            for j in range(int(self.wsizeX/self.ksizeX)):
+               labell=[]
+               for k in range(int(self.wsizeY/self.ksizeY)):
+                  labell.append(QLabel(self))
+                  labell[k].setFixedSize(self.ksizeX,self.ksizeY)
+                  labell[k].installEventFilter(self)
+                  self.layout.addWidget(labell[k],k,j)
+               self.labels.append(labell)
          if i!=0:
             self.blocks[int(self.blockses[i][1])][int(self.blockses[i][2])]=self.blockses[i]
             if self.blockses[i][0]=="6":
@@ -883,7 +889,7 @@ class AppWindow(QWidget):
          syg="Sz"
       elif i[7]=="8":
          syg="Ms2"
-      extext=i[3]+syg
+      extext="S"+i[3]+syg
       self.writeserial.append(extext)
 
    def resetIZ(self,iz):
@@ -967,10 +973,10 @@ class AppWindow(QWidget):
                   yk=-1
          else:
             if (self.blocks[xz][yz][0]=="2" and (self.blocks[xz][yz][5]=="Sem" or self.blocks[xz][yz][5]=="Sem+m")) or self.blocks[xz][yz][0]=="3":
-               if self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][6]=="0" and self.blocks[xz][yz][4]==kier:
+               if self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][4]==kier and self.blocks[xz][yz][6]=="0" and not ko:
                   self.blocks[xz][yz][6]="2"
                   self.changeTo(self.blocks[xz][yz][8],"2","2")
-               elif self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][6]=="2" and self.blocks[xz][yz][4]==kier:
+               elif self.blocks[xz][yz][0]=="2" and self.blocks[xz][yz][4]==kier and (self.blocks[xz][yz][6]=="2" or ko):
                   self.blocks[xz][yz][6]="0"
                   self.changeTo(self.blocks[xz][yz][8],"0","0")
                self.drawBlock(xz,yz)
@@ -1056,7 +1062,7 @@ class AppWindow(QWidget):
                      self.BL(x,y,5)
                   elif data_raw[2]=="PS" and (self.blocks[x][y][6]=="5" or self.blocks[x][y][6]=="51"):
                      self.BL(x,y,7)
-                  elif data_raw[2]=="Ko" and self.blocks[x][y][6]=="6":
+                  elif data_raw[2]=="Ko" and (self.blocks[x][y][6]=="6" or self.blocks[x][y][6]=="3" or self.blocks[x][y][6]=="31"):
                      self.BL(x,y,1)
                   
             elif len(data_raw)==4 and data_raw[3]=="K":
@@ -1078,10 +1084,10 @@ class AppWindow(QWidget):
                      self.IzChange(data_raw[0],"3")
                      x,y=self.findinblocks(data_raw[2])
                      self.changeIz(x,y,True,False)
-                  elif self.IzCheck(data_raw[0])!="1":
-                     self.IzChange(data_raw[0],"3")
+                  elif self.IzCheck(data_raw[0])=="1":
+                     self.IzChange(data_raw[0],"0")
                      x,y=self.findinblocks(data_raw[2])
-                     self.changeIz(x,y,True,False)
+                     self.changeIz(x,y,True,True)
 
                else: 
                   if self.IzCheck(data_raw[0])=="1" or self.IzCheck(data_raw[0])=="3":
