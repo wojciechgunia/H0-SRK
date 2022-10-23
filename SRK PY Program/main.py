@@ -589,11 +589,16 @@ class AppWindow(QWidget):
          elif self.blocks[x2][y2][7]=="1" and self.crossspeed==True:
             self.crossspeed=False
             return "4"
-         elif (self.blocks[x2][y2][7]=="4" or self.blocks[x2][y2][7]=="3") and self.crossspeed==False:
+         elif (self.blocks[x2][y2][7]=="4" or self.blocks[x2][y2][7]=="6") and self.crossspeed==False:
             return "2"
-         elif (self.blocks[x2][y2][7]=="4" or self.blocks[x2][y2][7]=="3") and self.crossspeed==True:
+         elif (self.blocks[x2][y2][7]=="4" or self.blocks[x2][y2][7]=="6") and self.crossspeed==True:
             self.crossspeed=False
             return "5"
+         elif self.blocks[x2][y2][7]=="3" and self.crossspeed==False:
+            return "1"
+         elif self.blocks[x2][y2][7]=="3" and self.crossspeed==True:
+            self.crossspeed=False
+            return "4"
       else:
          if self.crossspeed==True:
             self.crossspeed=False
@@ -1079,7 +1084,8 @@ class AppWindow(QWidget):
                   self.IzChange(data_raw[1],"0")
                   self.changeIz(x,y,False,True)
             elif len(data_raw)==4 and data_raw[3]=="S":
-               if data_raw[0]==data_raw[1]:
+               x0,y0=self.findinblocks(data_raw[2])               
+               if data_raw[0]==data_raw[1] and self.blocks[int(x0)][int(y0)][0]=="3":
                   if self.IzCheck(data_raw[0])!="1":
                      self.IzChange(data_raw[0],"3")
                      x,y=self.findinblocks(data_raw[2])
@@ -1090,6 +1096,7 @@ class AppWindow(QWidget):
                      self.changeIz(x,y,True,True)
 
                else: 
+                    
                   if self.IzCheck(data_raw[0])=="1" or self.IzCheck(data_raw[0])=="3":
                      if self.IzCheck(data_raw[0])=="1":
                         self.IzChange(data_raw[0],"2")
@@ -1115,6 +1122,7 @@ class AppWindow(QWidget):
                   if j[1]=="1":
                      self.writeserial.append("B;"+i[3]+";PS")
                      print("B;"+i[3]+";PS")
+                     self.writeserial.append("B;"+i[3]+";ZZ")
                      self.blocks[int(i[1])][int(i[2])][6]="6"
                      self.drawBlock(i[1],i[2])
                      return 0
